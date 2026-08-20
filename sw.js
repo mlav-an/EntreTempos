@@ -12,7 +12,7 @@
    é isso que faz o navegador ir buscar a versão nova.
    ------------------------------------------------------------------ */
 
-const VERSAO = "entretempos-v7";
+const VERSAO = "entretempos-v13";
 
 const FICHEIROS = [
   "./",
