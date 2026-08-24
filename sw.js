@@ -12,7 +12,7 @@
    é isso que faz o navegador ir buscar a versão nova.
    ------------------------------------------------------------------ */
 
-const VERSAO = "entretempos-v19-teste";
+const VERSAO = "entretempos-v20";
 
 const FICHEIROS = [
   "./",
@@ -140,7 +140,7 @@ function passouAHora(hora) {
   return agora.getHours() > h || (agora.getHours() === h && agora.getMinutes() >= m);
 }
 
-async function verificarLembretes() {
+async function verificarLembretes(umaVezPorDia = true) {
   const bruto = await ler(CHAVE_ESTADO);
   if (!bruto) return;
   let estado;
@@ -151,8 +151,10 @@ async function verificarLembretes() {
   }
 
   const hoje = chaveHoje();
-  const avisado = await ler(CHAVE_AVISADO);
-  if (avisado === hoje) return; // um aviso por dia
+  if (umaVezPorDia) {
+    const avisado = await ler(CHAVE_AVISADO);
+    if (avisado === hoje) return;
+  }
 
   const n = estado.notificacoes || {};
   const textos = [];
@@ -194,33 +196,7 @@ self.addEventListener("periodicsync", (evento) => {
 /* Acordado por um push. O servidor não envia conteúdo nenhum: basta o
    toque, e a decisão do que mostrar é tomada aqui, no dispositivo.   */
 self.addEventListener("push", (evento) => {
-  // MODO DE TESTE: mostra sempre alguma coisa, para sabermos se o toque chega.
-  evento.waitUntil(
-    (async () => {
-      let detalhe = "sem lembretes hoje";
-      try {
-        const bruto = await ler(CHAVE_ESTADO);
-        const estado = typeof bruto === "string" ? JSON.parse(bruto) : bruto;
-        const hoje = chaveHoje();
-        if (!estado) detalhe = "não encontrei dados guardados";
-        else {
-          const agenda = estado.agenda;
-          if (!agenda) detalhe = "sem agenda guardada";
-          else if (agenda.data !== hoje) detalhe = `agenda é de ${agenda.data}, hoje é ${hoje}`;
-          else if (!agenda.textos || agenda.textos.length === 0) detalhe = "agenda de hoje está vazia";
-          else detalhe = agenda.textos[0];
-        }
-      } catch (e) {
-        detalhe = "erro a ler os dados";
-      }
-      await self.registration.showNotification("EntreTempos (teste)", {
-        body: detalhe,
-        tag: `teste-${Date.now()}`,
-        icon: "./icone-192.png",
-        badge: "./icone-192.png",
-      });
-    })()
-  );
+  evento.waitUntil(verificarLembretes(false));
 });
 
 /* Ao tocar na notificação, abre a aplicação em vez de um separador novo. */
