@@ -12,7 +12,7 @@
    é isso que faz o navegador ir buscar a versão nova.
    ------------------------------------------------------------------ */
 
-const VERSAO = "entretempos-v18";
+const VERSAO = "entretempos-v19-teste";
 
 const FICHEIROS = [
   "./",
@@ -194,7 +194,33 @@ self.addEventListener("periodicsync", (evento) => {
 /* Acordado por um push. O servidor não envia conteúdo nenhum: basta o
    toque, e a decisão do que mostrar é tomada aqui, no dispositivo.   */
 self.addEventListener("push", (evento) => {
-  evento.waitUntil(verificarLembretes());
+  // MODO DE TESTE: mostra sempre alguma coisa, para sabermos se o toque chega.
+  evento.waitUntil(
+    (async () => {
+      let detalhe = "sem lembretes hoje";
+      try {
+        const bruto = await ler(CHAVE_ESTADO);
+        const estado = typeof bruto === "string" ? JSON.parse(bruto) : bruto;
+        const hoje = chaveHoje();
+        if (!estado) detalhe = "não encontrei dados guardados";
+        else {
+          const agenda = estado.agenda;
+          if (!agenda) detalhe = "sem agenda guardada";
+          else if (agenda.data !== hoje) detalhe = `agenda é de ${agenda.data}, hoje é ${hoje}`;
+          else if (!agenda.textos || agenda.textos.length === 0) detalhe = "agenda de hoje está vazia";
+          else detalhe = agenda.textos[0];
+        }
+      } catch (e) {
+        detalhe = "erro a ler os dados";
+      }
+      await self.registration.showNotification("EntreTempos (teste)", {
+        body: detalhe,
+        tag: `teste-${Date.now()}`,
+        icon: "./icone-192.png",
+        badge: "./icone-192.png",
+      });
+    })()
+  );
 });
 
 /* Ao tocar na notificação, abre a aplicação em vez de um separador novo. */
