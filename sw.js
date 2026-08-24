@@ -12,7 +12,7 @@
    é isso que faz o navegador ir buscar a versão nova.
    ------------------------------------------------------------------ */
 
-const VERSAO = "entretempos-v20";
+const VERSAO = "entretempos-v22";
 
 const FICHEIROS = [
   "./",
@@ -134,12 +134,6 @@ function chaveHoje() {
   return `${d.getFullYear()}-${doisDigitos(d.getMonth() + 1)}-${doisDigitos(d.getDate())}`;
 }
 
-function passouAHora(hora) {
-  const [h, m] = (hora || "20:00").split(":").map(Number);
-  const agora = new Date();
-  return agora.getHours() > h || (agora.getHours() === h && agora.getMinutes() >= m);
-}
-
 async function verificarLembretes(umaVezPorDia = true) {
   const bruto = await ler(CHAVE_ESTADO);
   if (!bruto) return;
@@ -161,13 +155,11 @@ async function verificarLembretes(umaVezPorDia = true) {
 
   // lembrete da fotografia: semanal, no dia em que muda a semana de gravidez
   const g = estado.gravidez;
-  if (n.selfie && g && g.ativa && g.dum && passouAHora(n.horaSelfie)) {
+  if (n.selfie && g && g.ativa && g.dum) {
     const dias = Math.round((new Date(hoje) - new Date(g.dum)) / 86400000);
     if (dias >= 0 && dias % 7 === 0) {
       const semana = Math.floor(dias / 7);
-      const inicioSemana = new Date(new Date(g.dum).getTime() + semana * 7 * 86400000)
-        .toISOString()
-        .slice(0, 10);
+      const inicioSemana = new Date(new Date(g.dum).getTime() + semana * 7 * 86400000).toISOString().slice(0, 10);
       const temFoto = !!estado.ultimaFoto && estado.ultimaFoto >= inicioSemana;
       if (!temFoto) textos.push(`Hora da selfie! Começou a semana ${semana}.`);
     }
