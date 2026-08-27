@@ -12,7 +12,7 @@
    é isso que faz o navegador ir buscar a versão nova.
    ------------------------------------------------------------------ */
 
-const VERSAO = "entretempos-v22";
+const VERSAO = "entretempos-v27";
 
 const FICHEIROS = [
   "./",
@@ -171,13 +171,13 @@ async function verificarLembretes(umaVezPorDia = true) {
 
   if (textos.length === 0) return;
 
-  await escrever(CHAVE_AVISADO, hoje);
   await self.registration.showNotification("EntreTempos", {
-    body: textos[0],
+    body: textos.length > 1 ? `${textos[0]} (+${textos.length - 1})` : textos[0],
     tag: `entretempos-${hoje}`,
     icon: "./icone-192.png",
     badge: "./icone-192.png",
   });
+  await escrever(CHAVE_AVISADO, hoje);
 }
 
 /* Acordado pelo sistema na aplicação instalada (Android). */
@@ -188,7 +188,7 @@ self.addEventListener("periodicsync", (evento) => {
 /* Acordado por um push. O servidor não envia conteúdo nenhum: basta o
    toque, e a decisão do que mostrar é tomada aqui, no dispositivo.   */
 self.addEventListener("push", (evento) => {
-  evento.waitUntil(verificarLembretes(false));
+  evento.waitUntil(verificarLembretes(true));
 });
 
 /* Ao tocar na notificação, abre a aplicação em vez de um separador novo. */
