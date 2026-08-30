@@ -12,7 +12,7 @@
    é isso que faz o navegador ir buscar a versão nova.
    ------------------------------------------------------------------ */
 
-const VERSAO = "entretempos-v31-diagnostico";
+const VERSAO = "entretempos-v32";
 
 const FICHEIROS = [
   "./",
@@ -143,7 +143,6 @@ self.addEventListener("fetch", (evento) => {
    a aplicação está instalada no ecrã principal).                        */
 self.addEventListener("message", (evento) => {
   const d = evento.data || {};
-  if (d.tipo === "verificar") evento.waitUntil(verificarLembretes());
   if (d.tipo === "notificar") {
     self.registration.showNotification("EntreTempos", {
       body: d.texto || "Tens um lembrete.",
@@ -243,7 +242,25 @@ async function verificarLembretes(umaVezPorDia = true) {
 
   // restantes lembretes: vêm já calculados pela aplicação
   const agenda = estado.agenda;
-  if (agenda && agenda.data === hoje && Array.isArray(agenda.textos)) textos.push(...agenda.textos);
+  const agendaDeHoje = agenda && agenda.data === hoje && Array.isArray(agenda.textos);
+  if (agendaDeHoje) textos.push(...agenda.textos);
+
+  /* Se a aplicação não foi aberta hoje, a agenda está velha. O check-in não
+     precisa dela: basta ver se existe registo do dia.                      */
+  if (!agendaDeHoje && n.checkin) {
+    const r = (estado.registos || {})[hoje];
+    const temRegisto =
+      !!r &&
+      (r.humor != null ||
+        r.energia != null ||
+        r.peso != null ||
+        r.movimentos != null ||
+        (r.sintomas && r.sintomas.length) ||
+        (r.notas && r.notas.trim()) ||
+        r.fluxo ||
+        (r.etiquetas && r.etiquetas.length));
+    if (!temRegisto) textos.push("Ainda não registaste como te sentes hoje.");
+  }
 
   if (textos.length === 0) return;
 
@@ -264,36 +281,7 @@ self.addEventListener("periodicsync", (evento) => {
 /* Acordado por um push. O servidor não envia conteúdo nenhum: basta o
    toque, e a decisão do que mostrar é tomada aqui, no dispositivo.   */
 self.addEventListener("push", (evento) => {
-  // DIAGNÓSTICO: mostra sempre uma notificação, com a razão da decisão.
-  evento.waitUntil(
-    (async () => {
-      let razao = "";
-      try {
-        const bruto = await ler(CHAVE_ESTADO);
-        if (!bruto) razao = "não há dados guardados";
-        else {
-          const estado = typeof bruto === "string" ? JSON.parse(bruto) : bruto;
-          const hoje = chaveHoje();
-          const avisado = await ler(CHAVE_AVISADO);
-          const n = estado.notificacoes || {};
-          const agenda = estado.agenda;
-          if (avisado === hoje) razao = "já tinha avisado hoje (trava diária)";
-          else if (!agenda) razao = "não há agenda guardada";
-          else if (agenda.data !== hoje) razao = `agenda é de ${agenda.data}, hoje é ${hoje}`;
-          else if (!agenda.textos || !agenda.textos.length) razao = `agenda vazia; check-in=${n.checkin}`;
-          else razao = agenda.textos[0];
-        }
-      } catch (e) {
-        razao = "erro a ler: " + e.message;
-      }
-      await self.registration.showNotification("EntreTempos (diagnóstico)", {
-        body: razao,
-        tag: `diag-${Date.now()}`,
-        icon: "./icone-192.png",
-        badge: "./icone-192.png",
-      });
-    })()
-  );
+  evento.waitUntil(verificarLembretes(true));
 });
 
 /* Ao tocar na notificação, abre a aplicação em vez de um separador novo. */
