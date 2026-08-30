@@ -12,7 +12,7 @@
    é isso que faz o navegador ir buscar a versão nova.
    ------------------------------------------------------------------ */
 
-const VERSAO = "entretempos-v32";
+const VERSAO = "entretempos-v33";
 
 const FICHEIROS = [
   "./",
@@ -101,7 +101,19 @@ const FICHEIROS = [
 
 self.addEventListener("install", (evento) => {
   evento.waitUntil(
-    caches.open(VERSAO).then((cache) => cache.addAll(FICHEIROS)).then(() => self.skipWaiting())
+    /* Guardar um a um. Com addAll, um único ficheiro em falta faria falhar a
+       instalação inteira — e a aplicação ficaria sem funcionar offline e sem
+       notificações, em silêncio. Assim, o que falta é apenas ignorado.     */
+    caches
+      .open(VERSAO)
+      .then((cache) =>
+        Promise.all(
+          FICHEIROS.map((f) =>
+            cache.add(f).catch((erro) => console.warn("não consegui guardar", f, erro && erro.message))
+          )
+        )
+      )
+      .then(() => self.skipWaiting())
   );
 });
 
