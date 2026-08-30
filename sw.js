@@ -12,7 +12,7 @@
    é isso que faz o navegador ir buscar a versão nova.
    ------------------------------------------------------------------ */
 
-const VERSAO = "entretempos-v30";
+const VERSAO = "entretempos-v31-diagnostico";
 
 const FICHEIROS = [
   "./",
@@ -264,7 +264,36 @@ self.addEventListener("periodicsync", (evento) => {
 /* Acordado por um push. O servidor não envia conteúdo nenhum: basta o
    toque, e a decisão do que mostrar é tomada aqui, no dispositivo.   */
 self.addEventListener("push", (evento) => {
-  evento.waitUntil(verificarLembretes(true));
+  // DIAGNÓSTICO: mostra sempre uma notificação, com a razão da decisão.
+  evento.waitUntil(
+    (async () => {
+      let razao = "";
+      try {
+        const bruto = await ler(CHAVE_ESTADO);
+        if (!bruto) razao = "não há dados guardados";
+        else {
+          const estado = typeof bruto === "string" ? JSON.parse(bruto) : bruto;
+          const hoje = chaveHoje();
+          const avisado = await ler(CHAVE_AVISADO);
+          const n = estado.notificacoes || {};
+          const agenda = estado.agenda;
+          if (avisado === hoje) razao = "já tinha avisado hoje (trava diária)";
+          else if (!agenda) razao = "não há agenda guardada";
+          else if (agenda.data !== hoje) razao = `agenda é de ${agenda.data}, hoje é ${hoje}`;
+          else if (!agenda.textos || !agenda.textos.length) razao = `agenda vazia; check-in=${n.checkin}`;
+          else razao = agenda.textos[0];
+        }
+      } catch (e) {
+        razao = "erro a ler: " + e.message;
+      }
+      await self.registration.showNotification("EntreTempos (diagnóstico)", {
+        body: razao,
+        tag: `diag-${Date.now()}`,
+        icon: "./icone-192.png",
+        badge: "./icone-192.png",
+      });
+    })()
+  );
 });
 
 /* Ao tocar na notificação, abre a aplicação em vez de um separador novo. */
