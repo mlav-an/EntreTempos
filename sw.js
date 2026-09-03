@@ -12,7 +12,7 @@
    é isso que faz o navegador ir buscar a versão nova.
    ------------------------------------------------------------------ */
 
-const VERSAO = "entretempos-v39";
+const VERSAO = "entretempos-v40";
 
 const FICHEIROS = [
   "./",
@@ -104,16 +104,22 @@ self.addEventListener("install", (evento) => {
     /* Guardar um a um. Com addAll, um único ficheiro em falta faria falhar a
        instalação inteira — e a aplicação ficaria sem funcionar offline e sem
        notificações, em silêncio. Assim, o que falta é apenas ignorado.     */
-    caches
-      .open(VERSAO)
-      .then((cache) =>
-        Promise.all(
-          FICHEIROS.map((f) =>
-            cache.add(f).catch((erro) => console.warn("não consegui guardar", f, erro && erro.message))
-          )
+    /* Guardar um a um, e sempre da rede — não da cache do navegador. Sem o
+       cache: "reload", o GitHub Pages pode devolver a versão antiga durante
+       minutos e a aplicação parece não ter mudado. Um ficheiro em falta é
+       apenas ignorado, para não fazer falhar a instalação inteira.        */
+    caches.open(VERSAO).then((cache) =>
+      Promise.all(
+        FICHEIROS.map((f) =>
+          fetch(new Request(f, { cache: "reload" }))
+            .then((resposta) => {
+              if (!resposta || !resposta.ok) throw new Error("resposta " + (resposta && resposta.status));
+              return cache.put(f, resposta);
+            })
+            .catch((erro) => console.warn("não consegui guardar", f, erro && erro.message))
         )
-      )
-      .then(() => self.skipWaiting())
+      ).then(() => self.skipWaiting())
+    )
   );
 });
 
